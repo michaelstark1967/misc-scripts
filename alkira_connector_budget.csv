@@ -1,2 +1,0 @@
-name,unit,rx,rx_terabytes,rx_display,tx,tx_terabytes,tx_display,budget_field,budget_total_bytes,budget_total_terabytes,budget_total_display,budget_used_bytes,budget_used_terabytes,budget_used_display,budget_remaining_bytes,budget_remaining_terabytes,budget_remaining_display,budget_percent_left,budget_status
-con-azure_vn-48d7d168-8037-4fda-b842-c038004a,bytes,11708627501652,10.648935,10.65 TB,223612087608,0.203374,0.20 TB,RX,714682558054400,650.0,650.00 TB,11708627501652,10.648935,10.65 TB,702973930552748,639.351065,639.35 TB remaining,98.36,remaining
