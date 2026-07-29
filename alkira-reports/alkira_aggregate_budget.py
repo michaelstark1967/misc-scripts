@@ -12,6 +12,9 @@ Delivery: --delivery-config <json> with --send-email and/or --send-teams behave 
 
 from __future__ import annotations
 
+# Version of this helper
+VERSION = "1.0"
+
 import argparse
 import csv
 import datetime as dt
