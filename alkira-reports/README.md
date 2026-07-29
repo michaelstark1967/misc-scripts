@@ -267,6 +267,45 @@ podman build -t alkira-aggregate:1.0 .
 podman run --rm --env-file .env -v "$PWD":/app alkira-aggregate:1.0
 ```
 
+Using the cron-enabled image
+
+The cron-enabled image supports passing a CRON expression at container start so you can change schedule without rebuilding the image. Use the helper script `docker-run-cron.sh` with `--cron-schedule` to set the schedule.
+
+Examples:
+
+- Default (daily at 03:00):
+
+```bash
+./docker-run-cron.sh --env-file .env
+```
+
+- Run daily at midnight (00:00):
+
+```bash
+./docker-run-cron.sh --env-file .env --cron-schedule "0 0 * * *"
+```
+
+- Run daily at 02:30:
+
+```bash
+./docker-run-cron.sh --env-file .env --cron-schedule "30 2 * * *"
+```
+
+Podman wrapper (RHEL)
+
+A podman-friendly wrapper is also provided — `podman-run-cron.sh` — which mirrors the docker helper but uses podman build/run semantics. Use it on RHEL hosts that prefer podman.
+
+Example:
+
+```bash
+./podman-run-cron.sh --env-file .env --cron-schedule "0 1 * * *"
+```
+
+Notes on timezone and schedule
+
+- CRON_SCHEDULE must be a valid five-field cron expression (minute hour day month day-of-week).
+- Cron uses the container's system time. To run in a specific timezone, pass TZ into the container via `--env` (the helper scripts forward CRON_SCHEDULE; add `-e TZ=America/New_York` when running manually or modify the helper to forward TZ).
+
 Notes for containers
 
 - The container expects an `.env` file to be mounted or provided via `--env-file`. Use the provided `.env.example` as a template and ensure the file permissions are secure (chmod 600).
