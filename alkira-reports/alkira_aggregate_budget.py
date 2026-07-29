@@ -228,7 +228,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "tx_display": format_data_amount(tx, args.output_unit),
                 "total_bytes": int(round(total)),
                 "total_display": format_data_amount(total, args.output_unit),
-                "percent_of_budget": round(percent_of_budget, 4),
+                "percent_of_budget": round(percent_of_budget, 2),
             }
         )
 
@@ -255,7 +255,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     write_aggregate_csv(output_path, rows, total_details)
 
     details = f"Aggregated connectors: {', '.join([r['environment'] for r in rows])}"
-    details += f"\nTotal used ({args.budget_field}): {total_details['used_display']}"
+    details += f"\nTotal used ({args.budget_field}): {total_details['total_display']}"
     details += f"\nBudget: {args.budget_total_tb} TB; Remaining: {total_details['budget_remaining_display']} ({total_details['budget_percent_left']:.2f}% left)"
 
     # optional delivery
