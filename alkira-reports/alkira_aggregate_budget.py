@@ -337,8 +337,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     write_aggregate_csv(output_path, rows, total_details)
 
     details = f"Aggregated connectors: {', '.join([r['environment'] for r in rows])}"
-    details += f"\nTotal used ({args.budget_field}): {total_details['total_display']}"
-    details += f"\nBudget: {args.budget_total_tb} TB; Remaining: {total_details['budget_remaining_display']} ({total_details['budget_percent_left']:.2f}% left)"
+    # include 24h and 7d totals and budget window (since DEFAULT_BUDGET_START)
+    details += f"\nLast 24h total ({args.budget_field}): {total_details['total_24h_display']}"
+    details += f"\nLast 7d total ({args.budget_field}): {total_details['total_7d_display']}"
+    details += (
+        f"\nBudget (since {DEFAULT_BUDGET_START}): Used {total_details['budget_used_display']}; "
+        f"Remaining: {total_details['budget_remaining_display']} ({total_details['budget_percent_left']:.2f}% left)"
+    )
 
     # optional delivery
     if args.send_email or args.send_teams:
