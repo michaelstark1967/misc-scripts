@@ -344,7 +344,98 @@ def main(argv: Optional[list[str]] = None) -> int:
     }
 
     output_path = args.output or Path("alkira_aggregate_budget.csv")
-    write_aggregate_csv(output_path, rows, total_details)
+    # Support Excel output if filename ends with .xlsx
+    if str(output_path).lower().endswith('.xlsx'):
+        try:
+            import openpyxl
+        except Exception:
+            print("error: openpyxl is required to write Excel files. Install with: pip install openpyxl", file=os.sys.stderr)
+            return 1
+        # write excel workbook
+        def write_excel(path: Path, rows: List[Dict[str, Any]], total: Dict[str, Any]):
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = 'Aggregate Budget'
+
+            headers = [
+                "environment",
+                "connector_id",
+                "rx_24h_bytes",
+                "rx_24h_display",
+                "tx_24h_bytes",
+                "tx_24h_display",
+                "total_24h_bytes",
+                "total_24h_display",
+                "rx_7d_bytes",
+                "rx_7d_display",
+                "tx_7d_bytes",
+                "tx_7d_display",
+                "total_7d_bytes",
+                "total_7d_display",
+                "budget_used_bytes",
+                "budget_used_display",
+                "percent_of_budget",
+            ]
+            ws.append(headers)
+
+            # write data rows
+            for r in rows:
+                row = []
+                for h in headers:
+                    val = r.get(h, "")
+                    # bytes fields -> integer
+                    if h.endswith('_bytes') or h == 'budget_used_bytes':
+                        row.append(int(val) if val not in ("", None) else None)
+                    elif h == 'percent_of_budget':
+                        # percent stored as percent value (e.g. 0.09 for 0.09%) -> write fraction
+                        try:
+                            pct = float(val)
+                            row.append(pct / 100.0)
+                        except Exception:
+                            row.append(None)
+                    else:
+                        row.append(val)
+                ws.append(row)
+
+            # write TOTAL row
+            total_row = []
+            for h in headers:
+                if h == 'environment':
+                    total_row.append('TOTAL')
+                else:
+                    val = total.get(h)
+                    if h.endswith('_bytes') or h == 'budget_used_bytes':
+                        total_row.append(int(val) if val not in (None, "") else None)
+                    elif h == 'percent_of_budget':
+                        try:
+                            pct = float(total.get('budget_used_bytes', 0)) / float(total.get('budget_total_bytes', 1)) * 100.0
+                            total_row.append(pct / 100.0)
+                        except Exception:
+                            total_row.append(None)
+                    else:
+                        total_row.append(val)
+            ws.append(total_row)
+
+            # formatting: set number formats for byte columns and percent
+            from openpyxl.utils import get_column_letter
+            for idx, h in enumerate(headers, start=1):
+                col = get_column_letter(idx)
+                if h.endswith('_bytes') or h == 'budget_used_bytes':
+                    for cell in ws[col]:
+                        if cell.value is None:
+                            continue
+                        cell.number_format = '#,##0'
+                if h == 'percent_of_budget':
+                    for cell in ws[col]:
+                        if cell.value is None:
+                            continue
+                        cell.number_format = '0.00%'
+
+            wb.save(path)
+
+        write_excel(output_path, rows, total_details)
+    else:
+        write_aggregate_csv(output_path, rows, total_details)
 
     details = f"Aggregated connectors: {', '.join([r['environment'] for r in rows])}"
     # include 24h and 7d totals and budget window (since DEFAULT_BUDGET_START)
