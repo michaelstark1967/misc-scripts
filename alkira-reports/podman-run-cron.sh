@@ -7,6 +7,7 @@ set -euo pipefail
 IMAGE_NAME="alkira-aggregate-cron:1.0"
 ENV_FILE=""
 CRON_SCHEDULE=""
+TZ_VALUE=""
 DETACH=true
 
 while [[ $# -gt 0 ]]; do
@@ -14,10 +15,16 @@ while [[ $# -gt 0 ]]; do
     --image-name) IMAGE_NAME="$2"; shift 2;;
     --env-file) ENV_FILE="$2"; shift 2;;
     --cron-schedule) CRON_SCHEDULE="$2"; shift 2;;
+    --tz) TZ_VALUE="$2"; shift 2;;
     --foreground) DETACH=false; shift;;
     *) echo "Unknown arg: $1"; exit 1;;
   esac
 done
+
+# If no --tz provided, but host TZ env is set, forward it
+if [[ -z "$TZ_VALUE" && -n "${TZ:-}" ]]; then
+  TZ_VALUE="$TZ"
+fi
 
 # Build image
 podman build -f Dockerfile.cron -t "$IMAGE_NAME" .
@@ -34,6 +41,10 @@ fi
 
 if [[ -n "$CRON_SCHEDULE" ]]; then
   RUN_ARGS+=(--env "CRON_SCHEDULE=$CRON_SCHEDULE")
+fi
+
+if [[ -n "$TZ_VALUE" ]]; then
+  RUN_ARGS+=(--env "TZ=$TZ_VALUE")
 fi
 
 if $DETACH; then
