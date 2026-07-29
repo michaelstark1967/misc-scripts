@@ -1,13 +1,13 @@
 {
   "email": {
-    "smtp_host": "smtp.office365.com",
-    "smtp_port": 587,
-    "use_tls": true,
+    "smtp_host": "smtpeu.pvhcorp.com",
+    "smtp_port": 25,
+    "use_tls": false,
     "smtp_username_env": "ALKIRA_SMTP_USERNAME",
     "smtp_password_env": "ALKIRA_SMTP_PASSWORD",
     "from_env": "ALKIRA_REPORT_FROM",
     "to": [
-      "network-team@example.com"
+      "michaelstark@pvh.com"
     ],
     "cc": [],
     "bcc": [],
@@ -15,13 +15,5 @@
     "body": "Attached: Alkira aggregate budget report.",
     "attach_report": true,
     "timeout": 60
-  },
-  "teams": {
-    "webhook_url_env": "ALKIRA_TEAMS_WEBHOOK_URL",
-    "channel": "Network Operations",
-    "title": "Alkira Aggregate Budget Report",
-    "text": "Latest Alkira aggregate budget report is ready.",
-    "include_details": true,
-    "timeout": 30
   }
 }
