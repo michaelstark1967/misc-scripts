@@ -1,0 +1,19 @@
+{
+  "email": {
+    "smtp_host": "smtpeu.pvhcorp.com",
+    "smtp_port": 25,
+    "use_tls": false,
+    "smtp_username_env": "",
+    "smtp_password_env": "",
+    "from_env": "ALKIRA_REPORT_FROM",
+    "to": [
+      "michaelstark@pvh.com", "mstark007@gmail.com"
+    ],
+    "cc": [],
+    "bcc": [],
+    "subject": "Alkira aggregate budget report",
+    "body": "Attached: Alkira aggregate budget report.",
+    "attach_report": true,
+    "timeout": 60
+  }
+}

@@ -1,0 +1,31 @@
+# Cron-enabled Docker image for running the alkira report daily
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Install cron and any OS deps
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends cron procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps commonly needed by the helper
+RUN pip install --no-cache-dir openpyxl requests
+
+# Copy repo files into the image
+COPY . /app
+
+# Ensure wrapper is executable (support two build contexts: repo root or inside alkira-reports/)
+RUN set -eux; \
+    if [ -f /app/alkira-reports/run_aggregate_and_email.sh ]; then chmod +x /app/alkira-reports/run_aggregate_and_email.sh; fi; \
+    if [ -f /app/run_aggregate_and_email.sh ]; then chmod +x /app/run_aggregate_and_email.sh; fi
+
+# Add entrypoint that writes the cron file from an environment variable
+COPY entrypoint-cron.sh /app/entrypoint-cron.sh
+RUN chmod +x /app/entrypoint-cron.sh
+
+# Ensure log file path exists and has permissive permissions (file will be created by entrypoint)
+RUN mkdir -p /app/alkira-reports && chmod 755 /app/alkira-reports
+
+# Use entrypoint which will generate the cron file using $CRON_SCHEDULE (default: 0 3 * * *)
+ENTRYPOINT ["/app/entrypoint-cron.sh"]
