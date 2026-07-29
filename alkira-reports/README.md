@@ -166,17 +166,27 @@ Dashboard stats use Unix-second `startTime` and `endTime` values. Chart-style re
 
 A separate helper script [alkira_aggregate_budget.py](/Users/michaelstark@pvh.com/GitHub/misc-scripts/alkira-reports/alkira_aggregate_budget.py) is provided to aggregate transmitted data across multiple connectors (environments) and report remaining budget. The helper accepts repeated `--connector NAME=CONNECTOR_ID` pairs, sums the chosen traffic field (`tx`, `rx`, or `total`) across the specified connectors, compares the total against a configurable budget (default 650 TB), writes a CSV with per-environment rows and a totals section, and can optionally send email and Teams notifications using the same delivery-config JSON format used by `alkira_bandwidth_report.py`.
 
-Example:
+Quick usage examples:
+
+One-line (pasteable):
+
+```bash
+./alkira_aggregate_budget.py --portal "$ALKIRA_PORTAL" --api-key "$ALKIRA_API_KEY" --connector DEV=33168 --connector QA=36205 --connector QA2=36542 --connector PROD=36608 --budget-total-tb 650 --budget-field rx --output alkira_aggregate_budget.xlsx
+```
+
+Multi-line (readable):
 
 ```bash
 ./alkira_aggregate_budget.py \
   --portal "$ALKIRA_PORTAL" --api-key "$ALKIRA_API_KEY" \
   --connector DEV=33168 --connector QA=36205 --connector QA2=36542 --connector PROD=36608 \
-  --budget-total-tb 650 --budget-field rx --output alkira_aggregate_budget.csv
-
-# Note
-This example uses --budget-field rx to report received data (RX) for the listed AWS environments. Use --budget-field tx to report transmitted data (TX) instead.
+  --budget-total-tb 650 --budget-field rx \
+  --output alkira_aggregate_budget.xlsx
 ```
+
+Note:
+- The examples write an Excel (.xlsx) workbook (requires `openpyxl`). Install with `pip install openpyxl`.
+- This example uses `--budget-field rx` to report received data (RX) for the listed AWS environments. Use `--budget-field tx` to report transmitted data (TX) instead.
 
 Sample CSV output (abbreviated):
 

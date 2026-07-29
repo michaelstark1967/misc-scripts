@@ -41,5 +41,4 @@ fi
   --connector PROD=36608 \
   --budget-total-tb 650 \
   --budget-field rx \
-  --format csv \
-  --output alkira_aggregate_budget.csv
+  --output alkira_aggregate_budget.xlsx
