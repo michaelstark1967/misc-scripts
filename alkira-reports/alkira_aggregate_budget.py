@@ -24,6 +24,7 @@ from alkira_bandwidth_report import (
     AlkiraClient,
     build_query,
     DEFAULT_BUDGET_TOTAL_TB,
+    DEFAULT_BUDGET_START,
     DEFAULT_INTERVAL_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
     epoch_milliseconds,
@@ -110,16 +111,24 @@ def resolve_time_range(start: Optional[dt.datetime], end: Optional[dt.datetime])
 
 
 def write_aggregate_csv(path: Path, rows: List[Dict[str, Any]], total: Dict[str, Any]) -> None:
-    # New CSV layout includes rx/tx per environment and percent-of-budget
+    # CSV layout includes rx/tx per environment for 24h and 7d, plus budget totals (since 2026-06-01)
     fieldnames = [
         "environment",
         "connector_id",
-        "rx_bytes",
-        "rx_display",
-        "tx_bytes",
-        "tx_display",
-        "total_bytes",
-        "total_display",
+        "rx_24h_bytes",
+        "rx_24h_display",
+        "tx_24h_bytes",
+        "tx_24h_display",
+        "total_24h_bytes",
+        "total_24h_display",
+        "rx_7d_bytes",
+        "rx_7d_display",
+        "tx_7d_bytes",
+        "tx_7d_display",
+        "total_7d_bytes",
+        "total_7d_display",
+        "budget_used_bytes",
+        "budget_used_display",
         "percent_of_budget",
     ]
 
@@ -130,14 +139,24 @@ def write_aggregate_csv(path: Path, rows: List[Dict[str, Any]], total: Dict[str,
             writer.writerow({k: r.get(k, "") for k in fieldnames})
         # blank row and totals section
         fh.write("\n")
-        fh.write(f"TOTAL_RX_BYTES,{int(round(total['rx_bytes']))}\n")
-        fh.write(f"TOTAL_RX_DISPLAY,{total['rx_display']}\n")
-        fh.write(f"TOTAL_TX_BYTES,{int(round(total['tx_bytes']))}\n")
-        fh.write(f"TOTAL_TX_DISPLAY,{total['tx_display']}\n")
-        fh.write(f"TOTAL_USED_BYTES,{int(round(total['total_bytes']))}\n")
-        fh.write(f"TOTAL_USED_DISPLAY,{total['total_display']}\n")
+        fh.write(f"TOTAL_RX_24H_BYTES,{int(round(total['rx_24h_bytes']))}\n")
+        fh.write(f"TOTAL_RX_24H_DISPLAY,{total['rx_24h_display']}\n")
+        fh.write(f"TOTAL_TX_24H_BYTES,{int(round(total['tx_24h_bytes']))}\n")
+        fh.write(f"TOTAL_TX_24H_DISPLAY,{total['tx_24h_display']}\n")
+        fh.write(f"TOTAL_24H_BYTES,{int(round(total['total_24h_bytes']))}\n")
+        fh.write(f"TOTAL_24H_DISPLAY,{total['total_24h_display']}\n")
+
+        fh.write(f"TOTAL_RX_7D_BYTES,{int(round(total['rx_7d_bytes']))}\n")
+        fh.write(f"TOTAL_RX_7D_DISPLAY,{total['rx_7d_display']}\n")
+        fh.write(f"TOTAL_TX_7D_BYTES,{int(round(total['tx_7d_bytes']))}\n")
+        fh.write(f"TOTAL_TX_7D_DISPLAY,{total['tx_7d_display']}\n")
+        fh.write(f"TOTAL_7D_BYTES,{int(round(total['total_7d_bytes']))}\n")
+        fh.write(f"TOTAL_7D_DISPLAY,{total['total_7d_display']}\n")
+
         fh.write(f"BUDGET_TOTAL_TB,{total['budget_total_tb']}\n")
         fh.write(f"BUDGET_TOTAL_BYTES,{int(round(total['budget_total_bytes']))}\n")
+        fh.write(f"BUDGET_USED_BYTES,{int(round(total['budget_used_bytes']))}\n")
+        fh.write(f"BUDGET_USED_DISPLAY,{total['budget_used_display']}\n")
         fh.write(f"BUDGET_REMAINING_BYTES,{int(round(total['budget_remaining_bytes']))}\n")
         fh.write(f"BUDGET_REMAINING_DISPLAY,{total['budget_remaining_display']}\n")
         fh.write(f"BUDGET_PERCENT_LEFT,{total['budget_percent_left']}\n")
@@ -190,70 +209,127 @@ def main(argv: Optional[list[str]] = None) -> int:
     total_rx = 0.0
     total_tx = 0.0
 
+    # We'll collect three ranges per connector: last 24h, last 7d, and budget window (since DEFAULT_BUDGET_START to now)
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    last24_start = now - dt.timedelta(days=1)
+    last24_end = now
+    last7_start = now - dt.timedelta(days=7)
+    last7_end = now
+    budget_start = parse_datetime(DEFAULT_BUDGET_START)
+    budget_end = now
+
+    rows = []
+
+    total_rx_24h = total_tx_24h = total_24h = 0.0
+    total_rx_7d = total_tx_7d = total_7d = 0.0
+    total_budget_used = 0.0
+
     for name, cid in args.connector:
-        context = dict(context_base)
-        context["connector_id"] = cid
         endpoint = f"/tenantnetworks/{tenant_network_id}/stats/connectordata/{cid}"
-        try:
-            response = client.request("GET", endpoint, query=query)
-        except Exception as exc:
-            print(f"Failed to fetch data for {name} ({cid}): {exc}", file=os.sys.stderr)
-            return 1
 
-        try:
-            import json
+        def fetch_range(start_dt: dt.datetime, end_dt: dt.datetime) -> Optional[dict]:
+            q = build_query(args, start_dt, end_dt, "connector-data")
+            try:
+                resp = client.request("GET", endpoint, query=q)
+            except Exception as exc:
+                print(f"Failed to fetch data for {name} ({cid}) range {start_dt} - {end_dt}: {exc}", file=os.sys.stderr)
+                return None
+            try:
+                import json
 
-            payload = json.loads(response.text)
-        except Exception:
-            print(f"Invalid JSON response for {name} ({cid})", file=os.sys.stderr)
-            return 1
+                payload = json.loads(resp.text)
+            except Exception:
+                print(f"Invalid JSON response for {name} ({cid})", file=os.sys.stderr)
+                return None
+            return {"payload": payload}
 
-        rx = transmitted_bytes_from_payload(payload, "rx") or 0.0
-        tx = transmitted_bytes_from_payload(payload, "tx") or 0.0
-        total = 0.0
-        if args.budget_field == "total":
-            total = (rx + tx)
-        elif args.budget_field == "rx":
-            total = rx
-        else:
-            total = tx
+        # 24h
+        r24 = fetch_range(last24_start, last24_end)
+        rx24 = tx24 = 0.0
+        if r24:
+            rx24 = transmitted_bytes_from_payload(r24["payload"], "rx") or 0.0
+            tx24 = transmitted_bytes_from_payload(r24["payload"], "tx") or 0.0
+        total24 = rx24 + tx24 if args.budget_field == "total" else (rx24 if args.budget_field == "rx" else tx24)
 
-        total_rx += rx
-        total_tx += tx
+        # 7d
+        r7 = fetch_range(last7_start, last7_end)
+        rx7 = tx7 = 0.0
+        if r7:
+            rx7 = transmitted_bytes_from_payload(r7["payload"], "rx") or 0.0
+            tx7 = transmitted_bytes_from_payload(r7["payload"], "tx") or 0.0
+        total7 = rx7 + tx7 if args.budget_field == "total" else (rx7 if args.budget_field == "rx" else tx7)
+
+        # budget window (since DEFAULT_BUDGET_START)
+        rb = fetch_range(budget_start, budget_end)
+        budget_used = 0.0
+        if rb:
+            # budget field may be tx/rx/total
+            if args.budget_field == "total":
+                budget_used = transmitted_bytes_from_payload(rb["payload"], "total") or 0.0
+            else:
+                budget_used = transmitted_bytes_from_payload(rb["payload"], args.budget_field) or 0.0
+
+        # accumulate totals
+        total_rx_24h += rx24
+        total_tx_24h += tx24
+        total_24h += total24
+
+        total_rx_7d += rx7
+        total_tx_7d += tx7
+        total_7d += total7
+
+        total_budget_used += budget_used
 
         budget_bytes = tb_to_bytes(args.budget_total_tb)
-        percent_of_budget = (total / budget_bytes * 100) if budget_bytes else 0
+        percent_of_budget = (budget_used / budget_bytes * 100) if budget_bytes else 0
 
         rows.append(
             {
                 "environment": name,
                 "connector_id": cid,
-                "rx_bytes": int(round(rx)),
-                "rx_display": format_data_amount(rx, args.output_unit),
-                "tx_bytes": int(round(tx)),
-                "tx_display": format_data_amount(tx, args.output_unit),
-                "total_bytes": int(round(total)),
-                "total_display": format_data_amount(total, args.output_unit),
+                "rx_24h_bytes": int(round(rx24)),
+                "rx_24h_display": format_data_amount(rx24, args.output_unit),
+                "tx_24h_bytes": int(round(tx24)),
+                "tx_24h_display": format_data_amount(tx24, args.output_unit),
+                "total_24h_bytes": int(round(total24)),
+                "total_24h_display": format_data_amount(total24, args.output_unit),
+                "rx_7d_bytes": int(round(rx7)),
+                "rx_7d_display": format_data_amount(rx7, args.output_unit),
+                "tx_7d_bytes": int(round(tx7)),
+                "tx_7d_display": format_data_amount(tx7, args.output_unit),
+                "total_7d_bytes": int(round(total7)),
+                "total_7d_display": format_data_amount(total7, args.output_unit),
+                "budget_used_bytes": int(round(budget_used)),
+                "budget_used_display": format_data_amount(budget_used, args.output_unit),
                 "percent_of_budget": round(percent_of_budget, 2),
             }
         )
 
     budget_bytes = tb_to_bytes(args.budget_total_tb)
-    total_used = total_tx if args.budget_field == "tx" else (total_rx if args.budget_field == "rx" else (total_rx + total_tx))
-    remaining_bytes = budget_bytes - total_used
-    percent_left = (remaining_bytes / budget_bytes * 100) if budget_bytes else 0
+    budget_remaining = budget_bytes - total_budget_used
+    percent_left = (budget_remaining / budget_bytes * 100) if budget_bytes else 0
 
     total_details = {
-        "rx_bytes": total_rx,
-        "rx_display": format_data_amount(total_rx, args.output_unit) or str(total_rx),
-        "tx_bytes": total_tx,
-        "tx_display": format_data_amount(total_tx, args.output_unit) or str(total_tx),
-        "total_bytes": total_used,
-        "total_display": format_data_amount(total_used, args.output_unit) or str(total_used),
+        "rx_24h_bytes": total_rx_24h,
+        "rx_24h_display": format_data_amount(total_rx_24h, args.output_unit) or str(total_rx_24h),
+        "tx_24h_bytes": total_tx_24h,
+        "tx_24h_display": format_data_amount(total_tx_24h, args.output_unit) or str(total_tx_24h),
+        "total_24h_bytes": total_24h,
+        "total_24h_display": format_data_amount(total_24h, args.output_unit) or str(total_24h),
+
+        "rx_7d_bytes": total_rx_7d,
+        "rx_7d_display": format_data_amount(total_rx_7d, args.output_unit) or str(total_rx_7d),
+        "tx_7d_bytes": total_tx_7d,
+        "tx_7d_display": format_data_amount(total_tx_7d, args.output_unit) or str(total_tx_7d),
+        "total_7d_bytes": total_7d,
+        "total_7d_display": format_data_amount(total_7d, args.output_unit) or str(total_7d),
+
         "budget_total_tb": args.budget_total_tb,
         "budget_total_bytes": int(round(budget_bytes)),
-        "budget_remaining_bytes": int(round(remaining_bytes)),
-        "budget_remaining_display": f"{format_data_amount(abs(remaining_bytes), args.output_unit) or str(abs(remaining_bytes))} {'remaining' if remaining_bytes>=0 else 'over'}",
+        "budget_used_bytes": int(round(total_budget_used)),
+        "budget_used_display": format_data_amount(total_budget_used, args.output_unit) or str(total_budget_used),
+        "budget_remaining_bytes": int(round(budget_remaining)),
+        "budget_remaining_display": f"{format_data_amount(abs(budget_remaining), args.output_unit) or str(abs(budget_remaining))} {'remaining' if budget_remaining>=0 else 'over'}",
         "budget_percent_left": round(percent_left, 2),
     }
 
