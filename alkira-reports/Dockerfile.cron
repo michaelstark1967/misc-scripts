@@ -15,8 +15,10 @@ RUN pip install --no-cache-dir openpyxl requests
 # Copy repo files into the image
 COPY . /app
 
-# Ensure wrapper is executable
-RUN chmod +x /app/alkira-reports/run_aggregate_and_email.sh
+# Ensure wrapper is executable (support two build contexts: repo root or inside alkira-reports/)
+RUN set -eux; \
+    if [ -f /app/alkira-reports/run_aggregate_and_email.sh ]; then chmod +x /app/alkira-reports/run_aggregate_and_email.sh; fi; \
+    if [ -f /app/run_aggregate_and_email.sh ]; then chmod +x /app/run_aggregate_and_email.sh; fi
 
 # Add entrypoint that writes the cron file from an environment variable
 COPY entrypoint-cron.sh /app/entrypoint-cron.sh
