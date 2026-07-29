@@ -104,17 +104,32 @@ def resolve_time_range(start: Optional[dt.datetime], end: Optional[dt.datetime])
 
 
 def write_aggregate_csv(path: Path, rows: List[Dict[str, Any]], total: Dict[str, Any]) -> None:
-    fieldnames = ["environment", "connector_id", "used_bytes", "used_display"]
-    # include budget summary columns on the totals row
+    # New CSV layout includes rx/tx per environment and percent-of-budget
+    fieldnames = [
+        "environment",
+        "connector_id",
+        "rx_bytes",
+        "rx_display",
+        "tx_bytes",
+        "tx_display",
+        "total_bytes",
+        "total_display",
+        "percent_of_budget",
+    ]
+
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
         for r in rows:
             writer.writerow({k: r.get(k, "") for k in fieldnames})
-        # blank row and totals
+        # blank row and totals section
         fh.write("\n")
-        fh.write(f"TOTAL_USED_BYTES,{int(round(total['used_bytes']))}\n")
-        fh.write(f"TOTAL_USED_DISPLAY,{total['used_display']}\n")
+        fh.write(f"TOTAL_RX_BYTES,{int(round(total['rx_bytes']))}\n")
+        fh.write(f"TOTAL_RX_DISPLAY,{total['rx_display']}\n")
+        fh.write(f"TOTAL_TX_BYTES,{int(round(total['tx_bytes']))}\n")
+        fh.write(f"TOTAL_TX_DISPLAY,{total['tx_display']}\n")
+        fh.write(f"TOTAL_USED_BYTES,{int(round(total['total_bytes']))}\n")
+        fh.write(f"TOTAL_USED_DISPLAY,{total['total_display']}\n")
         fh.write(f"BUDGET_TOTAL_TB,{total['budget_total_tb']}\n")
         fh.write(f"BUDGET_TOTAL_BYTES,{int(round(total['budget_total_bytes']))}\n")
         fh.write(f"BUDGET_REMAINING_BYTES,{int(round(total['budget_remaining_bytes']))}\n")
@@ -166,7 +181,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         query.update(extra)
 
     rows: List[Dict[str, Any]] = []
-    total_used = 0.0
+    total_rx = 0.0
+    total_tx = 0.0
 
     for name, cid in args.connector:
         context = dict(context_base)
@@ -178,10 +194,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"Failed to fetch data for {name} ({cid}): {exc}", file=os.sys.stderr)
             return 1
 
-        # parse payload via helper imported function
         try:
-            # use transmitted_bytes_from_payload on the parsed payload
-            # The helper expects a payload object, so parse JSON from response
             import json
 
             payload = json.loads(response.text)
@@ -189,26 +202,48 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"Invalid JSON response for {name} ({cid})", file=os.sys.stderr)
             return 1
 
-        used = transmitted_bytes_from_payload(payload, args.budget_field)
-        if used is None:
-            used = 0.0
-        total_used += used
+        rx = transmitted_bytes_from_payload(payload, "rx") or 0.0
+        tx = transmitted_bytes_from_payload(payload, "tx") or 0.0
+        total = 0.0
+        if args.budget_field == "total":
+            total = (rx + tx)
+        elif args.budget_field == "rx":
+            total = rx
+        else:
+            total = tx
+
+        total_rx += rx
+        total_tx += tx
+
+        budget_bytes = tb_to_bytes(args.budget_total_tb)
+        percent_of_budget = (total / budget_bytes * 100) if budget_bytes else 0
+
         rows.append(
             {
                 "environment": name,
                 "connector_id": cid,
-                "used_bytes": int(round(used)),
-                "used_display": format_data_amount(used, args.output_unit),
+                "rx_bytes": int(round(rx)),
+                "rx_display": format_data_amount(rx, args.output_unit),
+                "tx_bytes": int(round(tx)),
+                "tx_display": format_data_amount(tx, args.output_unit),
+                "total_bytes": int(round(total)),
+                "total_display": format_data_amount(total, args.output_unit),
+                "percent_of_budget": round(percent_of_budget, 4),
             }
         )
 
     budget_bytes = tb_to_bytes(args.budget_total_tb)
+    total_used = total_tx if args.budget_field == "tx" else (total_rx if args.budget_field == "rx" else (total_rx + total_tx))
     remaining_bytes = budget_bytes - total_used
     percent_left = (remaining_bytes / budget_bytes * 100) if budget_bytes else 0
 
     total_details = {
-        "used_bytes": total_used,
-        "used_display": format_data_amount(total_used, args.output_unit) or str(total_used),
+        "rx_bytes": total_rx,
+        "rx_display": format_data_amount(total_rx, args.output_unit) or str(total_rx),
+        "tx_bytes": total_tx,
+        "tx_display": format_data_amount(total_tx, args.output_unit) or str(total_tx),
+        "total_bytes": total_used,
+        "total_display": format_data_amount(total_used, args.output_unit) or str(total_used),
         "budget_total_tb": args.budget_total_tb,
         "budget_total_bytes": int(round(budget_bytes)),
         "budget_remaining_bytes": int(round(remaining_bytes)),
