@@ -135,31 +135,41 @@ def write_aggregate_csv(path: Path, rows: List[Dict[str, Any]], total: Dict[str,
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
+        # Write environment rows, coercing byte fields to strings so spreadsheet programs
+        # don't render them in scientific notation or lose precision.
         for r in rows:
-            writer.writerow({k: r.get(k, "") for k in fieldnames})
-        # blank row and totals section
-        fh.write("\n")
-        fh.write(f"TOTAL_RX_24H_BYTES,{int(round(total['rx_24h_bytes']))}\n")
-        fh.write(f"TOTAL_RX_24H_DISPLAY,{total['rx_24h_display']}\n")
-        fh.write(f"TOTAL_TX_24H_BYTES,{int(round(total['tx_24h_bytes']))}\n")
-        fh.write(f"TOTAL_TX_24H_DISPLAY,{total['tx_24h_display']}\n")
-        fh.write(f"TOTAL_24H_BYTES,{int(round(total['total_24h_bytes']))}\n")
-        fh.write(f"TOTAL_24H_DISPLAY,{total['total_24h_display']}\n")
+            row_out = {}
+            for k in fieldnames:
+                v = r.get(k, "")
+                # For byte fields, ensure they are written as strings (no scientific notation)
+                if k.endswith("_bytes") or k in ("budget_used_bytes",):
+                    row_out[k] = str(int(v)) if isinstance(v, (int, float)) and v != "" else str(v)
+                else:
+                    row_out[k] = v
+            writer.writerow(row_out)
 
-        fh.write(f"TOTAL_RX_7D_BYTES,{int(round(total['rx_7d_bytes']))}\n")
-        fh.write(f"TOTAL_RX_7D_DISPLAY,{total['rx_7d_display']}\n")
-        fh.write(f"TOTAL_TX_7D_BYTES,{int(round(total['tx_7d_bytes']))}\n")
-        fh.write(f"TOTAL_TX_7D_DISPLAY,{total['tx_7d_display']}\n")
-        fh.write(f"TOTAL_7D_BYTES,{int(round(total['total_7d_bytes']))}\n")
-        fh.write(f"TOTAL_7D_DISPLAY,{total['total_7d_display']}\n")
-
-        fh.write(f"BUDGET_TOTAL_TB,{total['budget_total_tb']}\n")
-        fh.write(f"BUDGET_TOTAL_BYTES,{int(round(total['budget_total_bytes']))}\n")
-        fh.write(f"BUDGET_USED_BYTES,{int(round(total['budget_used_bytes']))}\n")
-        fh.write(f"BUDGET_USED_DISPLAY,{total['budget_used_display']}\n")
-        fh.write(f"BUDGET_REMAINING_BYTES,{int(round(total['budget_remaining_bytes']))}\n")
-        fh.write(f"BUDGET_REMAINING_DISPLAY,{total['budget_remaining_display']}\n")
-        fh.write(f"BUDGET_PERCENT_LEFT,{total['budget_percent_left']}\n")
+        # Write a single TOTAL row using the same headers to keep the CSV tabular and
+        # avoid free-form key/value lines that confuse spreadsheets.
+        total_row = {
+            "environment": "TOTAL",
+            "connector_id": "",
+            "rx_24h_bytes": str(int(round(total.get("rx_24h_bytes", 0)))),
+            "rx_24h_display": total.get("rx_24h_display", ""),
+            "tx_24h_bytes": str(int(round(total.get("tx_24h_bytes", 0)))),
+            "tx_24h_display": total.get("tx_24h_display", ""),
+            "total_24h_bytes": str(int(round(total.get("total_24h_bytes", 0)))),
+            "total_24h_display": total.get("total_24h_display", ""),
+            "rx_7d_bytes": str(int(round(total.get("rx_7d_bytes", 0)))),
+            "rx_7d_display": total.get("rx_7d_display", ""),
+            "tx_7d_bytes": str(int(round(total.get("tx_7d_bytes", 0)))),
+            "tx_7d_display": total.get("tx_7d_display", ""),
+            "total_7d_bytes": str(int(round(total.get("total_7d_bytes", 0)))),
+            "total_7d_display": total.get("total_7d_display", ""),
+            "budget_used_bytes": str(int(round(total.get("budget_used_bytes", 0)))),
+            "budget_used_display": total.get("budget_used_display", ""),
+            "percent_of_budget": f"{round(total.get('budget_used_bytes',0) / total.get('budget_total_bytes',1) * 100,2) if total.get('budget_total_bytes') else ''}",
+        }
+        writer.writerow({k: total_row.get(k, "") for k in fieldnames})
 
 
 def main(argv: Optional[list[str]] = None) -> int:
