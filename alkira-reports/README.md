@@ -237,7 +237,41 @@ Edit the crontab for the user (crontab -e) and add:
 ```
 
 Notes
+
 - The wrapper sources .env if present, so store secrets there with appropriate filesystem permissions (chmod 600).
 - For .xlsx output the system running the cron job must have openpyxl installed (pip install openpyxl) and a Python environment available. If using a virtualenv, source it at the top of the wrapper before running the script.
 - The wrapper defaults to RX and .xlsx; edit the wrapper to change environment connector IDs, budget field, or output path as needed.
 
+Docker / Container
+
+A container image is provided to run the helper on RHEL or other Linux hosts. The image includes openpyxl so .xlsx output works without additional host setup.
+
+- Build with the helper script:
+
+```bash
+./docker-build.sh
+```
+
+This builds the image `alkira-aggregate:1.0`.
+
+- Run the container (mounts the current directory so outputs persist):
+
+```bash
+./docker-run.sh --env-file .env
+```
+
+Or with podman directly:
+
+```bash
+podman build -t alkira-aggregate:1.0 .
+podman run --rm --env-file .env -v "$PWD":/app alkira-aggregate:1.0
+```
+
+Notes for containers
+
+- The container expects an `.env` file to be mounted or provided via `--env-file`. Use the provided `.env.example` as a template and ensure the file permissions are secure (chmod 600).
+- If you prefer to run a one-off command instead of the wrapper, use `./docker-run.sh --command "./alkira_aggregate_budget.py --help"`.
+
+Version
+
+- Helper script VERSION = 1.0
