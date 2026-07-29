@@ -198,3 +198,46 @@ PROD,36608,0,0 Bytes,0,0 Bytes,0,0 Bytes,0,0 Bytes,1419969081,1.32 GB,1419969081
 TOTAL,,35802467913,33.35 GB,44422221333,41.37 GB,74224689246,74.72 GB,69135690246,64.41 GB,58024679135,54.06 GB,127261369381,118.47 GB,644000000000,0.58 TB,0.09
 ```
 
+Wrapper: run_aggregate_and_email.sh
+
+A convenience wrapper is provided to run the aggregate helper and email the generated report using the tuned delivery config.
+
+- Script: run_aggregate_and_email.sh (executable)
+- Config: alkira_report_config.json (sample delivery settings)
+
+Example .env (place in the same folder or a secure location and the wrapper will source it):
+
+```bash
+# Alkira API
+ALKIRA_PORTAL="your-tenant.portal.alkira.com"
+ALKIRA_API_KEY="your-api-key"
+
+# SMTP credentials referenced by alkira_report_config.json
+ALKIRA_SMTP_USERNAME="sender@example.com"
+ALKIRA_SMTP_PASSWORD="smtp-or-app-password"
+ALKIRA_REPORT_FROM="sender@example.com"
+
+# Optional overrides (paths)
+# ALKIRA_AGGREGATE_BUDGET_SCRIPT="/full/path/to/alkira_aggregate_budget.py"
+# ALKIRA_REPORT_DELIVERY_CONFIG="/full/path/to/alkira_report_config.json"
+```
+
+Run the wrapper locally:
+
+```bash
+./run_aggregate_and_email.sh
+```
+
+Cron-friendly example (run nightly at 02:00 UTC)
+
+Edit the crontab for the user (crontab -e) and add:
+
+```cron
+0 2 * * * cd /Users/michaelstark@pvh.com/GitHub/misc-scripts/alkira-reports && ./run_aggregate_and_email.sh >> /var/log/alkira_aggregate.log 2>&1
+```
+
+Notes
+- The wrapper sources .env if present, so store secrets there with appropriate filesystem permissions (chmod 600).
+- For .xlsx output the system running the cron job must have openpyxl installed (pip install openpyxl) and a Python environment available. If using a virtualenv, source it at the top of the wrapper before running the script.
+- The wrapper defaults to RX and .xlsx; edit the wrapper to change environment connector IDs, budget field, or output path as needed.
+
