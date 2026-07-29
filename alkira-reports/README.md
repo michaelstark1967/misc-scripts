@@ -1,6 +1,6 @@
 # Alkira Bandwidth Report Puller
 
-Version 1.0
+Version 1.2
 
 `alkira_bandwidth_report.py` pulls bandwidth stats from an Alkira tenant portal and writes JSON or flattened CSV.
 
@@ -252,7 +252,7 @@ A container image is provided to run the helper on RHEL or other Linux hosts. Th
 ./docker-build.sh
 ```
 
-This builds the image `alkira-aggregate:1.0`.
+This builds the image `alkira-aggregate:1.2`.
 
 - Run the container (mounts the current directory so outputs persist):
 
@@ -263,9 +263,9 @@ This builds the image `alkira-aggregate:1.0`.
 Or with podman directly:
 
 ```bash
-podman build -t alkira-aggregate:1.0 .
+podman build -t alkira-aggregate:1.2 .
 # forward TZ explicitly when running if desired
-podman run --rm --env-file .env -e TZ="America/New_York" -v "$PWD":/app alkira-aggregate:1.0
+podman run --rm --env-file .env -e TZ="America/New_York" -v "$PWD":/app alkira-aggregate:1.2
 # if you prefer not to mount host timezone files into the container, pass --no-localtime to the cron helpers
 ./docker-run-cron.sh --env-file .env --no-localtime
 ./podman-run-cron.sh --env-file .env --no-localtime
@@ -337,4 +337,4 @@ podman logs -f alkira-aggregate-cron
 
 Version
 
-- Helper script VERSION = 1.0
+- Helper script VERSION = 1.2
