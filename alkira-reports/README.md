@@ -311,6 +311,26 @@ Notes for containers
 - The container expects an `.env` file to be mounted or provided via `--env-file`. Use the provided `.env.example` as a template and ensure the file permissions are secure (chmod 600).
 - If you prefer to run a one-off command instead of the wrapper, use `./docker-run.sh --command "./alkira_aggregate_budget.py --help"`.
 
+Checking logs
+
+- Tail the log file on the host (when the alkira-reports directory is mounted):
+
+```bash
+tail -f alkira-reports/cron.log
+```
+
+- Docker logs (follow):
+
+```bash
+docker logs -f alkira-aggregate-cron
+```
+
+- Podman logs (follow):
+
+```bash
+podman logs -f alkira-aggregate-cron
+```
+
 Version
 
 - Helper script VERSION = 1.0
