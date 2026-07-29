@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-IMAGE_NAME="alkira-aggregate-cron:1.2"
+IMAGE_NAME="alkira-aggregate-cron:1.2.1"
 ENV_FILE=""
 CRON_SCHEDULE=""
 TZ_VALUE=""

@@ -4,7 +4,7 @@ set -euo pipefail
 # Runs the alkira-aggregate container with sensible defaults for RHEL hosts.
 # Usage: ./docker-run.sh [--image name[:tag]] [--env-file path] [--command "cmd args"]
 
-IMAGE_NAME="alkira-aggregate:1.2"
+IMAGE_NAME="alkira-aggregate:1.2.1"
 ENV_FILE=".env"
 CMD=""
 

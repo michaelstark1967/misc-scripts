@@ -13,7 +13,7 @@ Delivery: --delivery-config <json> with --send-email and/or --send-teams behave 
 from __future__ import annotations
 
 # Version of this helper
-VERSION = "1.2"
+VERSION = "1.2.1"
 
 import argparse
 import csv

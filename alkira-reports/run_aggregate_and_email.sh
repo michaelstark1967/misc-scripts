@@ -48,7 +48,7 @@ fi
   --connector QA2=36542 \
   --connector PROD=36608 \
   --budget-total-tb 650 \
-  --budget-field rx \
+  --budget-field tx \
   --output alkira_aggregate_budget.xlsx \
   --delivery-config "$DELIVERY_CONFIG" \
   --send-email

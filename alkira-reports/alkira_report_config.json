@@ -3,11 +3,11 @@
     "smtp_host": "smtpeu.pvhcorp.com",
     "smtp_port": 25,
     "use_tls": false,
-    "smtp_username_env": "ALKIRA_SMTP_USERNAME",
-    "smtp_password_env": "ALKIRA_SMTP_PASSWORD",
+    "smtp_username_env": "",
+    "smtp_password_env": "",
     "from_env": "ALKIRA_REPORT_FROM",
     "to": [
-      "michaelstark@pvh.com"
+      "michaelstark@pvh.com", "mstark007@gmail.com"
     ],
     "cc": [],
     "bcc": [],

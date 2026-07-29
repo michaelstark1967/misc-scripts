@@ -1,6 +1,6 @@
 # Simple container for Alkira aggregate budget helper
-# Build: docker build -t alkira-aggregate:1.2 .
-# Run (example): docker run --rm --env-file .env -v "$PWD":/app alkira-aggregate:1.2
+# Build: docker build -t alkira-aggregate:1.2.1 .
+# Run (example): docker run --rm --env-file .env -v "$PWD":/app alkira-aggregate:1.2.1
 
 FROM python:3.11-slim
 
