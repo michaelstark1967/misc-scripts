@@ -264,7 +264,8 @@ Or with podman directly:
 
 ```bash
 podman build -t alkira-aggregate:1.0 .
-podman run --rm --env-file .env -v "$PWD":/app alkira-aggregate:1.0
+# forward TZ explicitly when running if desired
+podman run --rm --env-file .env -e TZ="America/New_York" -v "$PWD":/app alkira-aggregate:1.0
 ```
 
 Using the cron-enabled image

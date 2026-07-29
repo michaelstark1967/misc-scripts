@@ -32,6 +32,14 @@ docker build -f Dockerfile.cron -t "$IMAGE_NAME" .
 # Prepare run args
 RUN_ARGS=(--name alkira-aggregate-cron --restart unless-stopped -v "$PWD/alkira-reports":/app/alkira-reports)
 
+# Mount host timezone files into the container if available for stricter parity
+if [[ -e /etc/localtime ]]; then
+  RUN_ARGS+=(-v /etc/localtime:/etc/localtime:ro)
+fi
+if [[ -e /etc/timezone ]]; then
+  RUN_ARGS+=(-v /etc/timezone:/etc/timezone:ro)
+fi
+
 if [[ -n "$ENV_FILE" ]]; then
   # mount the provided env file into the container so the wrapper can source it
   RUN_ARGS+=(--env-file "$ENV_FILE")

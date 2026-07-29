@@ -32,6 +32,14 @@ podman build -f Dockerfile.cron -t "$IMAGE_NAME" .
 # Prepare run args
 RUN_ARGS=(--name alkira-aggregate-cron -v "$PWD/alkira-reports":/app/alkira-reports)
 
+# Mount host timezone files into the container if available for stricter parity
+if [[ -e /etc/localtime ]]; then
+  RUN_ARGS+=(--volume /etc/localtime:/etc/localtime:ro)
+fi
+if [[ -e /etc/timezone ]]; then
+  RUN_ARGS+=(--volume /etc/timezone:/etc/timezone:ro)
+fi
+
 # Podman supports --restart on newer versions; include if available
 RUN_ARGS+=(--restart=unless-stopped)
 
