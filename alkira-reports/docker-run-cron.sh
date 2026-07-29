@@ -8,6 +8,7 @@ IMAGE_NAME="alkira-aggregate-cron:1.0"
 ENV_FILE=""
 CRON_SCHEDULE=""
 TZ_VALUE=""
+NO_LOCALTIME=false
 DETACH=true
 
 while [[ $# -gt 0 ]]; do
@@ -16,6 +17,7 @@ while [[ $# -gt 0 ]]; do
     --env-file) ENV_FILE="$2"; shift 2;;
     --cron-schedule) CRON_SCHEDULE="$2"; shift 2;;
     --tz) TZ_VALUE="$2"; shift 2;;
+    --no-localtime) NO_LOCALTIME=true; shift;;
     --foreground) DETACH=false; shift;;
     *) echo "Unknown arg: $1"; exit 1;;
   esac
@@ -32,12 +34,14 @@ docker build -f Dockerfile.cron -t "$IMAGE_NAME" .
 # Prepare run args
 RUN_ARGS=(--name alkira-aggregate-cron --restart unless-stopped -v "$PWD/alkira-reports":/app/alkira-reports)
 
-# Mount host timezone files into the container if available for stricter parity
-if [[ -e /etc/localtime ]]; then
-  RUN_ARGS+=(-v /etc/localtime:/etc/localtime:ro)
-fi
-if [[ -e /etc/timezone ]]; then
-  RUN_ARGS+=(-v /etc/timezone:/etc/timezone:ro)
+# Mount host timezone files into the container if available for stricter parity (can be disabled with --no-localtime)
+if [[ "$NO_LOCALTIME" != "true" ]]; then
+  if [[ -e /etc/localtime ]]; then
+    RUN_ARGS+=(-v /etc/localtime:/etc/localtime:ro)
+  fi
+  if [[ -e /etc/timezone ]]; then
+    RUN_ARGS+=(-v /etc/timezone:/etc/timezone:ro)
+  fi
 fi
 
 if [[ -n "$ENV_FILE" ]]; then

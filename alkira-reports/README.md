@@ -266,6 +266,9 @@ Or with podman directly:
 podman build -t alkira-aggregate:1.0 .
 # forward TZ explicitly when running if desired
 podman run --rm --env-file .env -e TZ="America/New_York" -v "$PWD":/app alkira-aggregate:1.0
+# if you prefer not to mount host timezone files into the container, pass --no-localtime to the cron helpers
+./docker-run-cron.sh --env-file .env --no-localtime
+./podman-run-cron.sh --env-file .env --no-localtime
 ```
 
 Using the cron-enabled image
