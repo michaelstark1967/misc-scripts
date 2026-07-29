@@ -1,0 +1,30 @@
+# Cron-enabled Docker image for running the alkira report daily
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Install cron and any OS deps
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends cron procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps commonly needed by the helper
+RUN pip install --no-cache-dir openpyxl requests
+
+# Copy repo files into the image
+COPY . /app
+
+# Ensure wrapper is executable
+RUN chmod +x /app/alkira-reports/run_aggregate_and_email.sh
+
+# Add cron job file
+COPY cron/alkira-cron /etc/cron.d/alkira-cron
+RUN chmod 0644 /etc/cron.d/alkira-cron \
+    && crontab /etc/cron.d/alkira-cron
+
+# Create log file and give permissions
+RUN touch /app/alkira-reports/cron.log && chmod 644 /app/alkira-reports/cron.log
+
+# Start cron in foreground
+CMD ["/usr/sbin/cron", "-f"]

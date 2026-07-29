@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Run daily at 03:00 (server local time). Adjust schedule as needed.
+# Format for /etc/cron.d files: minute hour day month day-of-week user command
+0 3 * * * root cd /app/alkira-reports && /bin/bash -lc './run_aggregate_and_email.sh >> /app/alkira-reports/cron.log 2>&1'
