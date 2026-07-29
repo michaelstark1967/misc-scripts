@@ -18,13 +18,12 @@ COPY . /app
 # Ensure wrapper is executable
 RUN chmod +x /app/alkira-reports/run_aggregate_and_email.sh
 
-# Add cron job file
-COPY cron/alkira-cron /etc/cron.d/alkira-cron
-RUN chmod 0644 /etc/cron.d/alkira-cron \
-    && crontab /etc/cron.d/alkira-cron
+# Add entrypoint that writes the cron file from an environment variable
+COPY entrypoint-cron.sh /app/entrypoint-cron.sh
+RUN chmod +x /app/entrypoint-cron.sh
 
-# Create log file and give permissions
-RUN touch /app/alkira-reports/cron.log && chmod 644 /app/alkira-reports/cron.log
+# Ensure log file path exists and has permissive permissions (file will be created by entrypoint)
+RUN mkdir -p /app/alkira-reports && chmod 755 /app/alkira-reports
 
-# Start cron in foreground
-CMD ["/usr/sbin/cron", "-f"]
+# Use entrypoint which will generate the cron file using $CRON_SCHEDULE (default: 0 3 * * *)
+ENTRYPOINT ["/app/entrypoint-cron.sh"]
