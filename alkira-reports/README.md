@@ -172,7 +172,10 @@ Example:
 ./alkira_aggregate_budget.py \
   --portal "$ALKIRA_PORTAL" --api-key "$ALKIRA_API_KEY" \
   --connector DEV=33168 --connector QA=36205 --connector QA2=36542 --connector PROD=36608 \
-  --budget-total-tb 650 --budget-field tx --output alkira_aggregate_budget.csv
+  --budget-total-tb 650 --budget-field rx --output alkira_aggregate_budget.csv
+
+# Note
+This example uses --budget-field rx to report received data (RX) for the listed AWS environments. Use --budget-field tx to report transmitted data (TX) instead.
 ```
 
 Sample CSV output (abbreviated):
